@@ -16,7 +16,7 @@ locals {
   env = local.environment_vars.locals.environment
 
   # Expose the base source URL so different versions of the module can be deployed in different environments.
-  base_source_url = "git::git@github.com:hsnrathore/infrastructure-modules.git//vpc"
+  base_source_url = "git::git@github.com:hsnrathore/infrastructure-modules.git//global"
 }
 # ---------------------------------------------------------------------------------------------------------------------
 # MODULE PARAMETERS
@@ -24,5 +24,7 @@ locals {
 # environments.
 # ---------------------------------------------------------------------------------------------------------------------
 inputs = {
-  environment        = local.env
+  environment        = "${local.env}"
+  execution_role_name = "ecsTaskExecutionRole-${local.env}"
+  task_role_name = "ecsTaskRole-${local.env}"
 }

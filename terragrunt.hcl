@@ -1,17 +1,13 @@
 locals {
-  # Automatically load account-level variables
+
   account_vars = read_terragrunt_config(find_in_parent_folders("account.hcl"))
-
-  # Automatically load region-level variables
   region_vars = read_terragrunt_config(find_in_parent_folders("region.hcl"))
-
-  # Automatically load environment-level variables
   environment_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
-
-  # Extract the variables we need for easy access
   account_name = local.account_vars.locals.account_name
   account_id   = local.account_vars.locals.aws_account_id
+  aws_profile   = local.account_vars.locals.aws_profile
   aws_region   = local.region_vars.locals.aws_region
+
 }
 
 generate "provider" {
@@ -20,10 +16,28 @@ generate "provider" {
   contents  = <<EOF
 provider "aws" {
   region = "${local.aws_region}"
-  # Only these AWS Account IDs may be operated on by this template
   allowed_account_ids = ["${local.account_id}"]
+  profile = "${local.aws_profile}"
 }
 EOF
+}
+
+terraform {
+  extra_arguments "aws_profile" {
+    commands = [
+      "init",
+      "apply",
+      "refresh",
+      "import",
+      "plan",
+      "taint",
+      "untaint"
+    ]
+
+    env_vars = {
+      AWS_PROFILE = "${local.aws_profile}"
+    }
+  }
 }
 
 # Configure Terragrunt to automatically store tfstate files in an S3 bucket
@@ -31,10 +45,11 @@ remote_state {
   backend = "s3"
   config = {
     encrypt        = true
-    bucket         = "${get_env("TG_BUCKET_PREFIX", "")}terragrunt-example-terraform-state-${local.account_name}-${local.aws_region}"
+    bucket         = "terragrunt${local.account_name}"
     key            = "${path_relative_to_include()}/terraform.tfstate"
     region         = local.aws_region
     dynamodb_table = "terraform-locks"
+    profile = "${local.aws_profile}"
   }
   generate = {
     path      = "backend.tf"
